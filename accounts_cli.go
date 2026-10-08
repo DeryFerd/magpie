@@ -352,20 +352,32 @@ func untilShort(d time.Duration) string {
 	return fmt.Sprintf("%dd%dh", int(d.Hours())/24, int(d.Hours())%24)
 }
 
+// confirmRisk says what the vendor may do with an account of id signed in
+// from the CLI, the way the window's Add sheet does, and asks to go on.
+func confirmRisk(id string) error {
+	risk := provider.RiskOf(id)
+	if risk == "" {
+		return nil
+	}
+	fmt.Println(bold.Render("!"), risk)
+	fmt.Print("Sign in anyway? [y/N] ")
+	var yes string
+	fmt.Scanln(&yes)
+	if !strings.EqualFold(strings.TrimSpace(yes), "y") && !strings.EqualFold(strings.TrimSpace(yes), "yes") {
+		return fmt.Errorf("sign-in canceled")
+	}
+	return nil
+}
+
 // addAccount signs in to one more subscription in the browser, the way the
 // window's "Add account" does.
 func addAccount(agentID string) error {
-	if risk := map[string]string{"antigravity": provider.AntigravityRisk, "claude": provider.ClaudeRisk}[agentID]; risk != "" {
-		fmt.Println(bold.Render("!"), risk)
-		fmt.Print("Sign in anyway? [y/N] ")
-		var yes string
-		fmt.Scanln(&yes)
-		if !strings.EqualFold(strings.TrimSpace(yes), "y") && !strings.EqualFold(strings.TrimSpace(yes), "yes") {
-			return fmt.Errorf("sign-in canceled")
-		}
-	}
 	if _, plug := provider.PluginOf(agentID); plug || provider.Moved(agentID) {
+		// pluginLogin asks about the risk itself, on the provider it resolved
 		return pluginLogin(context.Background(), agentID, "")
+	}
+	if err := confirmRisk(agentID); err != nil {
+		return err
 	}
 	st, err := provider.StartSignIn(agentID)
 	if err != nil {

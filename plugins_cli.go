@@ -329,6 +329,9 @@ func pluginLogin(ctx context.Context, name, method string) error {
 	if err != nil {
 		return err
 	}
+	if err := confirmRisk(pp.ID); err != nil {
+		return err
+	}
 	if len(pp.Methods) == 0 {
 		return fmt.Errorf("%s's plugin has no way to sign in", pp.Name)
 	}
